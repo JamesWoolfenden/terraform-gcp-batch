@@ -72,7 +72,7 @@ No modules.
 | [google_kms_crypto_key_iam_member.compute_service_agent](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/kms_crypto_key_iam_member) | resource |
 | [google_project_iam_member.worker](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/project_iam_member) | resource |
 | [google_service_account.worker](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/service_account) | resource |
-| [data.google_project.current](https://registry.terraform.io/providers/hashicorp/google/latest/docs/data-sources/project) | data source |
+| [google_project.current](https://registry.terraform.io/providers/hashicorp/google/latest/docs/data-sources/project) | data source |
 
 ## Inputs
 
