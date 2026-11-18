@@ -61,6 +61,11 @@ resource "google_compute_instance_template" "worker" {
 
   lifecycle {
     create_before_destroy = true
+
+    precondition {
+      condition     = !var.enable_confidential_compute || can(regex("^(n2d|c2d|c3d|c4d)-", var.machine_type))
+      error_message = "var.enable_confidential_compute requires an AMD SEV capable machine type (n2d-, c2d-, c3d- or c4d-); set var.enable_confidential_compute = false to use ${var.machine_type}"
+    }
   }
 
   depends_on = [google_kms_crypto_key_iam_member.compute_service_agent]

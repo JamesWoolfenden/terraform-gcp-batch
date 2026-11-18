@@ -1,0 +1,63 @@
+{
+  "scan_date": "2026-11-18T00:00:00Z",
+  "scan_path": ".",
+  "category": "all",
+  "findings": [
+    {
+      "id": "HOLDEN_AI_001",
+      "status": "fixed",
+      "first_seen": "2026-11-18",
+      "last_seen": "2026-11-18",
+      "unresolved_since": null,
+      "suppression_reason": null,
+      "principle": "reliability",
+      "severity": "MEDIUM",
+      "confidence": "high",
+      "title": "Example worker network has no route to Google APIs, so Batch workers cannot report state",
+      "file": "example/examplea/google_compute_network.batch.tf",
+      "line": 3,
+      "resource": "google_compute_network.batch",
+      "related_resources": [
+        "google_compute_subnetwork.batch",
+        "module.batch.google_compute_instance_template.worker"
+      ],
+      "explanation": "The network sets delete_default_routes_on_create = true and suppressed HLD_GCP_303 as 'just enough to drive the module', but the module gives workers no external IP and relies on Private Google Access. With no route to default-internet-gateway (and no private.googleapis.com DNS), the on-VM Batch agent cannot reach batch.googleapis.com or logging, so every job submitted against the example template hangs. The suppression hid a real breakage of the example.",
+      "remediation": "Add a google_compute_route for 199.36.153.8/30 via default-internet-gateway plus a private googleapis.com zone (A private.googleapis.com, CNAME *.googleapis.com) on the network, and drop the HLD_GCP_303 suppression.",
+      "supersedes": "HLD_GCP_303",
+      "fixable": false
+    },
+    {
+      "id": "HOLDEN_AI_002",
+      "status": "fixed",
+      "first_seen": "2026-11-18",
+      "last_seen": "2026-11-18",
+      "unresolved_since": null,
+      "suppression_reason": null,
+      "principle": "reliability",
+      "severity": "MEDIUM",
+      "confidence": "high",
+      "title": "enable_confidential_compute (default true) is not enforced against an SEV capable machine_type",
+      "file": "google_compute_instance_template.worker.tf",
+      "line": 8,
+      "resource": "google_compute_instance_template.worker",
+      "related_resources": [
+        "variable.machine_type",
+        "variable.enable_confidential_compute"
+      ],
+      "explanation": "Confidential compute defaults to true and the machine_type description says it must be N2D/C2D/C3D, but nothing enforces it. A caller passing e.g. e2-standard-4 gets a template that plans and applies, and only fails when Batch creates VMs at job time.",
+      "remediation": "Add a lifecycle precondition on the instance template requiring an n2d/c2d/c3d/c4d machine type while var.enable_confidential_compute is true.",
+      "fixable": true,
+      "fix": "precondition {\n  condition     = !var.enable_confidential_compute || can(regex(\"^(n2d|c2d|c3d|c4d)-\", var.machine_type))\n  error_message = \"var.enable_confidential_compute requires an AMD SEV capable machine type\"\n}"
+    }
+  ],
+  "suggested_policies": [
+    {
+      "rationale": "Confidential SEV on a non-SEV machine family is a single-resource, two-attribute check that holds for any Terraform using these resource types; HLD_GCP_170 only requires confidential compute to be on, nothing checks the machine family.",
+      "yaml": "id: LOCAL_GCP_001\nname: Confidential (SEV) compute instances and templates must use an AMD SEV capable machine family\nprinciple: reliability\nseverity: MEDIUM\nrationale: |\n  confidential_instance_config.enable_confidential_compute = true selects AMD SEV,\n  which only N2D, C2D, C3D and C4D machine families support. Any other machine type\n  plans cleanly and only fails when GCP creates the VM, which for an instance\n  template is at job or MIG scale-out time, long after apply.\nmessage: |\n  enable_confidential_compute is true but machine_type is not an n2d-, c2d-, c3d- or c4d- type.\nremediation: |\n  Use an SEV capable machine type (e.g. machine_type = \"n2d-standard-2\"), or set\n  confidential_instance_config.confidential_instance_type for SEV_SNP/TDX on a family\n  that supports it, or disable confidential compute.\nresources:\n  google_compute_instance_template:\n    if_equals:\n      path: confidential_instance_config.enable_confidential_compute\n      value: true\n      then:\n        path: machine_type\n        matches: \"^(n2d|c2d|c3d|c4d)-\"\n  google_compute_region_instance_template:\n    if_equals:\n      path: confidential_instance_config.enable_confidential_compute\n      value: true\n      then:\n        path: machine_type\n        matches: \"^(n2d|c2d|c3d|c4d)-\"\n  google_compute_instance:\n    if_equals:\n      path: confidential_instance_config.enable_confidential_compute\n      value: true\n      then:\n        path: machine_type\n        matches: \"^(n2d|c2d|c3d|c4d)-\"\n",
+      "status": "installed",
+      "first_seen": "2026-11-18",
+      "last_seen": "2026-11-18"
+    }
+  ],
+  "suggested_suppressions": []
+}
